@@ -36,6 +36,7 @@
 
 #include <Wire.h>
 #include <ZumoShield.h>
+#include "SharpIR.h"
 
 // #define LOG_SERIAL // write log output to serial port
 
@@ -85,6 +86,16 @@ unsigned long last_turn_time;
 unsigned long contact_made_time;
 #define MIN_DELAY_AFTER_TURN          400  // ms = min delay before detecting contact event
 #define MIN_DELAY_BETWEEN_CONTACTS   1000  // ms = min delay between detecting new contact event
+
+
+#define ir A3
+#define model 1080
+// ir: the pin where your sensor is attached
+// model: an int that determines your sensor:  1080 for GP2Y0A21Y
+//                                            20150 for GP2Y0A02Y
+//                                            (working distance range according to the datasheets)
+
+SharpIR SharpIR(ir, model);
 
 // RunningAverage class
 // based on RunningAverage library for Arduino
@@ -230,7 +241,10 @@ void loop()
   }
   else  // otherwise, go straight
   {
-    if (check_for_contact()) on_contact_made();
+    if (check_for_contact() || SharpIR.distance() < 10) 
+    { 
+      on_contact_made();
+    }
     int speed = getForwardSpeed();
     motors.setSpeeds(speed, speed);
   }
