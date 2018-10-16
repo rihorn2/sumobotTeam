@@ -88,14 +88,8 @@ unsigned long contact_made_time;
 #define MIN_DELAY_BETWEEN_CONTACTS   1000  // ms = min delay between detecting new contact event
 
 
-#define ir A3
-#define model 1080
-// ir: the pin where your sensor is attached
-// model: an int that determines your sensor:  1080 for GP2Y0A21Y
-//                                            20150 for GP2Y0A02Y
-//                                            (working distance range according to the datasheets)
-
-SharpIR SharpIR(ir, model);
+SharpIR SharpIRLong(A3, 1080);
+SharpIR SharpIRShort(A2, 430);
 
 // RunningAverage class
 // based on RunningAverage library for Arduino
@@ -155,7 +149,6 @@ boolean in_contact;  // set when accelerometer detects contact with opposing rob
 
 // forward declaration
 void setForwardSpeed(ForwardSpeed speed);
-
 void setup()
 {
   // Initiate the Wire library and join the I2C bus as a master
@@ -241,7 +234,7 @@ void loop()
   }
   else  // otherwise, go straight
   {
-    if (check_for_contact() || SharpIR.distance() < 10) 
+    if (check_for_contact() || SharpIRLong.distance() < 10) 
     { 
       on_contact_made();
     }
