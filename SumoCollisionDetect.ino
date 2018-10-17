@@ -53,6 +53,8 @@ unsigned int sensor_values[NUM_SENSORS];
 // this might need to be tuned for different lighting conditions, surfaces, etc.
 #define QTR_THRESHOLD  1500 // microseconds
 ZumoReflectanceSensorArray sensors(QTR_NO_EMITTER_PIN);
+byte pins[] = {4, 11, A0, 5};
+sensors.init(pins, 4, 2000, QTR_NO_EMITTER_PIN);
 
 // Motor Settings
 ZumoMotors motors;
@@ -75,6 +77,13 @@ ForwardSpeed _forwardSpeed;  // current forward speed setting
 unsigned long full_speed_start_time;
 #define FULL_SPEED_DURATION_LIMIT     250  // ms
 
+// Our team's state 
+enum RobotState { SpinAndDetect, CloseIn, Kill};
+float distancesLong[10];
+float distancesNear[10];
+unsigned long last_turn_time;
+unsigned long contact_made_time;
+
 // Sound Effects
 ZumoBuzzer buzzer;
 const char sound_effect[] PROGMEM = "O4 T100 V15 L4 MS g12>c12>e12>G6>E12 ML>G2"; // "charge" melody
@@ -82,8 +91,8 @@ const char sound_effect[] PROGMEM = "O4 T100 V15 L4 MS g12>c12>e12>G6>E12 ML>G2"
 
  // Timing
 unsigned long loop_start_time;
-unsigned long last_turn_time;
-unsigned long contact_made_time;
+
+
 #define MIN_DELAY_AFTER_TURN          400  // ms = min delay before detecting contact event
 #define MIN_DELAY_BETWEEN_CONTACTS   1000  // ms = min delay between detecting new contact event
 
@@ -170,8 +179,10 @@ void setup()
   //motors.flipRightMotor(true);
 
   pinMode(LED, HIGH);
+  // Play automatic can interupt timing. Only use when not fighting
   buzzer.playMode(PLAY_AUTOMATIC);
   waitForButtonAndCountDown(false);
+  buzzer.playMode(PLAY_CHECK);
 }
 
 void waitForButtonAndCountDown(bool restarting)
@@ -201,6 +212,13 @@ void waitForButtonAndCountDown(bool restarting)
   last_turn_time = millis();  // prevents false contact detection on initial acceleration
   _forwardSpeed = SearchSpeed;
   full_speed_start_time = 0;
+
+  // Lower the shields!
+  motors.setSpeeds(200, 200);
+  delay(80);
+  motors.setSpeeds(-200, -200);
+  delay(80);
+  motors.setSpeeds(0, 0);
 }
 
 void loop()
@@ -216,6 +234,7 @@ void loop()
   loop_start_time = millis();
   lsm303.readAcceleration(loop_start_time);
   sensors.read(sensor_values);
+
 
   if ((_forwardSpeed == FullSpeed) && (loop_start_time - full_speed_start_time > FULL_SPEED_DURATION_LIMIT))
   {
