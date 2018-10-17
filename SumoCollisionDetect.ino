@@ -102,7 +102,6 @@ unsigned long loop_start_time;
 #define MIN_DELAY_AFTER_TURN          400  // ms = min delay before detecting contact event
 #define MIN_DELAY_BETWEEN_CONTACTS   1000  // ms = min delay between detecting new contact event
 
-
 SharpIR SharpIRLong(A3, 1080);
 SharpIR SharpIRShort(A2, 430);
 
@@ -227,8 +226,7 @@ void waitForButtonAndCountDown(bool restarting)
   // Lower the shields!
   motors.setSpeeds(200, 200);
   delay(80);
-  motors.setSpeeds(-200, -200);
-  delay(80);
+  retreat(LEFT);
   motors.setSpeeds(0, 0);
 }
 
@@ -330,6 +328,12 @@ void checkForDetections()
 void checkAndCloseIn() 
 {
 
+}
+
+void retreat(char direction)
+{
+  motors.setSpeeds(0.25 * direction * FULL_SPEED, direction * FULL_SPEED);
+  delay(REVERSE_DURATION);
 }
 
 // execute turn
