@@ -328,7 +328,8 @@ void checkOnKillState()
 void checkForDetections() 
 {
   const unsigned int initialIndex = distanceLongIndex;
-  distancesLong[distanceLongIndex] = SharpIRLong.distance();
+  const float distance = SharpIRLong.distance();
+  distancesLong[distanceLongIndex] = distance;
   if (distanceLongCount < DISTANCE_VECTOR_LENGTH)
   {
     distanceLongCount++;
@@ -339,18 +340,28 @@ void checkForDetections()
     distanceLongIndex = 0;
   }
 
+  if (distance < 30) 
+  {
+    motors.setSpeeds(300, 300);
+    _state = CloseIn;
+  }
+  else 
+  {
+    motors.setSpeeds(-100, 100);
+  }
+
  // Idea: keep scanning, until diff between min distance in array and latest read is above threshold, 
  // then count the index diff between the two points and unturn that ammount, enter closeIn state
-  if (distanceLongCount > 1)
-  {
-    // const float prevDist = 
-    // if ()
-  }
+  // if (distanceLongCount > 1)
+  // {
+  //   // const float prevDist = 
+  //   // if ()
+  // }
 }
 
 void checkAndCloseIn() 
 {
-
+  motors.setSpeeds(300, 300);
 }
 
 void retreat(char direction)
