@@ -74,15 +74,21 @@ ZumoMotors motors;
 
 enum ForwardSpeed { SearchSpeed, SustainedSpeed, FullSpeed };
 ForwardSpeed _forwardSpeed;  // current forward speed setting
-unsigned long full_speed_start_time;
-#define FULL_SPEED_DURATION_LIMIT     250  // ms
+#define FULL_SPEED_DURATION_LIMIT     2500  // ms, after which we retreat to the side
 
 // Our team's state 
+#define DISTANCE_VECTOR_LENGTH   10
 enum RobotState { SpinAndDetect, CloseIn, Kill};
-float distancesLong[10];
-float distancesNear[10];
+RobotState _state;
+float distancesLong[DISTANCE_VECTOR_LENGTH];
+float distancesNear[DISTANCE_VECTOR_LENGTH];
 unsigned long last_turn_time;
 unsigned long contact_made_time;
+unsigned long full_speed_start_time;
+unsigned int distanceLongIndex;
+unsigned int distanceLongCount;
+unsigned int distanceNearIndex;
+unsigned int distanceNearCount;
 
 // Sound Effects
 ZumoBuzzer buzzer;
@@ -211,7 +217,12 @@ void waitForButtonAndCountDown(bool restarting)
   contact_made_time = 0;
   last_turn_time = millis();  // prevents false contact detection on initial acceleration
   _forwardSpeed = SearchSpeed;
+  _state = SpinAndDetect;
   full_speed_start_time = 0;
+  distanceLongIndex = 0;
+  distanceLongCount = 0;
+  distanceNearCount = 0;
+  distanceNearIndex = 0;
 
   // Lower the shields!
   motors.setSpeeds(200, 200);
@@ -235,22 +246,21 @@ void loop()
   lsm303.readAcceleration(loop_start_time);
   sensors.read(sensor_values);
 
-
-  if ((_forwardSpeed == FullSpeed) && (loop_start_time - full_speed_start_time > FULL_SPEED_DURATION_LIMIT))
-  {
-    setForwardSpeed(SustainedSpeed);
+  // All states check for border
+  checkForBorderAndCorrect();
+  switch(_state) {
+    case Kill:
+      checkOnKillState();
+      break;
+    case SpinAndDetect:
+      checkForDetections();
+      break;
+    case CloseIn:
+      checkAndCloseIn();
+      break;
   }
 
-  if (sensor_values[0] < QTR_THRESHOLD)
-  {
-    // if leftmost sensor detects line, reverse and turn to the right
-    turn(RIGHT, true);
-  }
-  else if (sensor_values[5] < QTR_THRESHOLD)
-  {
-    // if rightmost sensor detects line, reverse and turn to the left
-    turn(LEFT, true);
-  }
+
   else  // otherwise, go straight
   {
     if (check_for_contact() || SharpIRLong.distance() < 10) 
@@ -260,6 +270,66 @@ void loop()
     int speed = getForwardSpeed();
     motors.setSpeeds(speed, speed);
   }
+}
+
+void checkForBorderAndCorrect()
+{
+  if (_state == Kill) {
+    // if we think we killed them, maybe play some appropriate game over music.
+  }
+  if (sensor_values[0] < QTR_THRESHOLD)
+  {
+    // if leftmost sensor detects line, reverse and turn to the right
+    turn(RIGHT, true);
+  }
+  else if (sensor_values[3] < QTR_THRESHOLD)
+  {
+    // if rightmost sensor detects line, reverse and turn to the left
+    turn(LEFT, true);
+  }
+}
+
+void checkOnKillState()
+{
+  // don't want to just be in a pushing match, we might lose.
+  if (loop_start_time - full_speed_start_time > FULL_SPEED_DURATION_LIMIT)
+  {
+    // reverse 90 degrees and then close in/kill
+    motors.setSpeeds(0, -300);
+    delay(100);
+    _state = CloseIn;
+    return;
+  }
+  // Look into ensuring we are pushing them front-on later...
+  motors.setSpeeds(400, 400);
+}
+
+void checkForDetections() 
+{
+  const unsigned int initialIndex = distanceLongIndex;
+  distancesLong[distanceLongIndex] = SharpIRLong.distance();
+  if (distanceLongCount < DISTANCE_VECTOR_LENGTH)
+  {
+    distanceLongCount++;
+  }
+  distanceLongIndex++
+  if (distanceLongCount == DISTANCE_VECTOR_LENGTH)
+  {
+    distanceLongIndex = 0;
+  }
+
+ // Idea: keep scanning, until diff between min distance in array and latest read is above threshold, 
+ // then count the index diff between the two points and unturn that ammount, enter closeIn state
+  if (distanceLongCount > 1)
+  {
+    // const float prevDist = 
+    // if ()
+  }
+}
+
+void checkAndCloseIn() 
+{
+
 }
 
 // execute turn
