@@ -355,8 +355,8 @@ void checkAndCloseIn()
 
 void retreat(char direction)
 {
-  motors.setSpeeds(0.25 * direction * FULL_SPEED, direction * FULL_SPEED);
-  delay(REVERSE_DURATION);
+  motors.setSpeeds(0.5 * direction * FULL_SPEED, direction * FULL_SPEED);
+  delay(600);
 }
 
 // execute turn
