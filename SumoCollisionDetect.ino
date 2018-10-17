@@ -75,10 +75,11 @@ ZumoMotors motors;
 enum ForwardSpeed { SearchSpeed, SustainedSpeed, FullSpeed };
 ForwardSpeed _forwardSpeed;  // current forward speed setting
 #define FULL_SPEED_DURATION_LIMIT     2500  // ms, after which we retreat to the side
+#define CENTERING_TIME_LIMIT          250
 
 // Our team's state 
 #define DISTANCE_VECTOR_LENGTH   10
-enum RobotState { SpinAndDetect, CloseIn, Kill};
+enum RobotState { SpinAndDetect, CloseIn, Kill, Centering};
 RobotState _state;
 float distancesLong[DISTANCE_VECTOR_LENGTH];
 float distancesNear[DISTANCE_VECTOR_LENGTH];
@@ -97,7 +98,7 @@ const char sound_effect[] PROGMEM = "O4 T100 V15 L4 MS g12>c12>e12>G6>E12 ML>G2"
 
  // Timing
 unsigned long loop_start_time;
-
+unsigned long start_centering_time;
 
 #define MIN_DELAY_AFTER_TURN          400  // ms = min delay before detecting contact event
 #define MIN_DELAY_BETWEEN_CONTACTS   1000  // ms = min delay between detecting new contact event
@@ -222,6 +223,7 @@ void waitForButtonAndCountDown(bool restarting)
   distanceLongCount = 0;
   distanceNearCount = 0;
   distanceNearIndex = 0;
+  start_centering_time = 0;
 
   // Lower the shields!
   motors.setSpeeds(200, 200);
@@ -256,9 +258,12 @@ void loop()
     case CloseIn:
       checkAndCloseIn();
       break;
+    case Centering:
+      checkForCentered();
+      break;
   }
 
-
+/* I don't THINK we want this once we have the full state machine
   else  // otherwise, go straight
   {
     if (check_for_contact() || SharpIRLong.distance() < 10) 
@@ -268,6 +273,19 @@ void loop()
     int speed = getForwardSpeed();
     motors.setSpeeds(speed, speed);
   }
+  */
+}
+
+void checkForCentered()
+{
+  if (loop_start_time - start_centering_time < CENTERING_TIME_LIMIT)
+  {
+    motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+  }
+  else
+  {
+    _state = SpinAndDetect;
+  }
 }
 
 void checkForBorderAndCorrect()
@@ -275,15 +293,20 @@ void checkForBorderAndCorrect()
   if (_state == Kill) {
     // if we think we killed them, maybe play some appropriate game over music.
   }
+  if (sensor_values[0] < QTR_THRESHOLD && sensor_values[3] < QTR_THRESHOLD)
+  {
+    _state = Centering;
+    start_centering_time = millis();
+  }
   if (sensor_values[0] < QTR_THRESHOLD)
   {
-    // if leftmost sensor detects line, reverse and turn to the right
-    turn(RIGHT, true);
+    // if leftmost sensor detects line, square right sensor to line
+    motors.setSpeeds(0, 150);
   }
   else if (sensor_values[3] < QTR_THRESHOLD)
   {
-    // if rightmost sensor detects line, reverse and turn to the left
-    turn(LEFT, true);
+    // if rightmost sensor detects line, square left sensor to line
+    motors.setSpeeds(150, 0);
   }
 }
 
