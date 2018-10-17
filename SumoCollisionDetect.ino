@@ -54,7 +54,6 @@ unsigned int sensor_values[NUM_SENSORS];
 #define QTR_THRESHOLD  1500 // microseconds
 ZumoReflectanceSensorArray sensors(QTR_NO_EMITTER_PIN);
 byte pins[] = {4, 11, A0, 5};
-sensors.init(pins, 4, 2000, QTR_NO_EMITTER_PIN);
 
 // Motor Settings
 ZumoMotors motors;
@@ -75,7 +74,7 @@ ZumoMotors motors;
 enum ForwardSpeed { SearchSpeed, SustainedSpeed, FullSpeed };
 ForwardSpeed _forwardSpeed;  // current forward speed setting
 #define FULL_SPEED_DURATION_LIMIT     2500  // ms, after which we retreat to the side
-#define CENTERING_TIME_LIMIT          250
+#define CENTERING_TIME_LIMIT          600
 
 // Our team's state 
 #define DISTANCE_VECTOR_LENGTH   10
@@ -189,6 +188,8 @@ void setup()
   buzzer.playMode(PLAY_AUTOMATIC);
   waitForButtonAndCountDown(false);
   buzzer.playMode(PLAY_CHECK);
+
+  sensors.init(pins, 4, 2000, QTR_NO_EMITTER_PIN);
 }
 
 void waitForButtonAndCountDown(bool restarting)
@@ -247,7 +248,10 @@ void loop()
   sensors.read(sensor_values);
 
   // All states check for border
-  checkForBorderAndCorrect();
+  if (_state != Centering && checkForBorderAndCorrect())
+  {
+    return;
+  }
   switch(_state) {
     case Kill:
       checkOnKillState();
@@ -278,9 +282,11 @@ void loop()
 
 void checkForCentered()
 {
+  motors.setSpeeds(0, 0);
   if (loop_start_time - start_centering_time < CENTERING_TIME_LIMIT)
   {
-    motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+    //buzzer.playNote(NOTE_G(3), 50, 12);
+    motors.setSpeeds(-400, -400);
   }
   else
   {
@@ -288,8 +294,9 @@ void checkForCentered()
   }
 }
 
-void checkForBorderAndCorrect()
+bool checkForBorderAndCorrect()
 {
+  // Serial.println("In checkForBorderAndCorrect");
   if (_state == Kill) {
     // if we think we killed them, maybe play some appropriate game over music.
   }
@@ -297,17 +304,21 @@ void checkForBorderAndCorrect()
   {
     _state = Centering;
     start_centering_time = millis();
+    return true;
   }
-  if (sensor_values[0] < QTR_THRESHOLD)
+  else if (sensor_values[0] < QTR_THRESHOLD)
   {
-    // if leftmost sensor detects line, square right sensor to line
+    // if leftmost sensor detects line, square right sensor to lineP
     motors.setSpeeds(0, 150);
+    return true;
   }
   else if (sensor_values[3] < QTR_THRESHOLD)
   {
     // if rightmost sensor detects line, square left sensor to line
     motors.setSpeeds(150, 0);
+    return true;
   }
+  return false;
 }
 
 void checkOnKillState()
@@ -333,7 +344,7 @@ void checkForDetections()
   {
     distanceLongCount++;
   }
-  distanceLongIndex++
+  distanceLongIndex++;
   if (distanceLongCount == DISTANCE_VECTOR_LENGTH)
   {
     distanceLongIndex = 0;
