@@ -74,7 +74,7 @@ ZumoMotors motors;
 enum ForwardSpeed { SearchSpeed, SustainedSpeed, FullSpeed };
 ForwardSpeed _forwardSpeed;  // current forward speed setting
 #define FULL_SPEED_DURATION_LIMIT     2500  // ms, after which we retreat to the side
-#define CENTERING_TIME_LIMIT          600
+#define CENTERING_TIME_LIMIT          800
 
 // Our team's state 
 #define DISTANCE_VECTOR_LENGTH   10
@@ -286,7 +286,7 @@ void checkForCentered()
   if (loop_start_time - start_centering_time < CENTERING_TIME_LIMIT)
   {
     //buzzer.playNote(NOTE_G(3), 50, 12);
-    motors.setSpeeds(-400, -400);
+    motors.setSpeeds(-300, -300);
   }
   else
   {
@@ -326,10 +326,8 @@ void checkOnKillState()
   // don't want to just be in a pushing match, we might lose.
   if (loop_start_time - full_speed_start_time > FULL_SPEED_DURATION_LIMIT)
   {
-    // reverse 90 degrees and then close in/kill
-    motors.setSpeeds(0, -300);
-    delay(100);
-    _state = CloseIn;
+    retreat(LEFT);
+    _state = SpinAndDetect;
     return;
   }
   // Look into ensuring we are pushing them front-on later...
@@ -351,14 +349,15 @@ void checkForDetections()
     distanceLongIndex = 0;
   }
 
-  if (distance < 30) 
+  if (distance < 35) 
   {
-    motors.setSpeeds(300, 300);
-    _state = CloseIn;
+    motors.setSpeeds(400, 400);
+    full_speed_start_time = millis();
+    _state = Kill;
   }
   else 
   {
-    motors.setSpeeds(-100, 100);
+    motors.setSpeeds(-200, 200);
   }
 
  // Idea: keep scanning, until diff between min distance in array and latest read is above threshold, 
@@ -377,8 +376,8 @@ void checkAndCloseIn()
 
 void retreat(char direction)
 {
-  motors.setSpeeds(0.5 * direction * FULL_SPEED, direction * FULL_SPEED);
-  delay(600);
+  motors.setSpeeds(0.25 * direction * FULL_SPEED, direction * FULL_SPEED);
+  delay(300);
 }
 
 // execute turn
